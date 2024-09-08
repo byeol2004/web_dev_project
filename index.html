@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Gallery & Albums</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="styles.css"> <!-- Custom CSS -->
+</head>
+<body>
+
+    <!-- Album Creation Section -->
+    <section class="create-album">
+        <h2>Create New Album</h2>
+        <form id="create-album-form" action="create_album.php" method="POST">
+            <input type="text" name="album_name" placeholder="Album Name" required>
+            <textarea name="album_description" placeholder="Album Description" required></textarea>
+            <button type="submit">Create Album</button>
+        </form>
+    </section>
+
+    <!-- Albums Display Section -->
+    <section class="albums">
+        <h2>My Albums</h2>
+        <div class="album-grid">
+            <?php
+            // Connect to the database
+            include 'config.php'; // Your database config file
+
+            // Fetch all albums
+            $albums = $pdo->query("SELECT * FROM albums")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($albums as $album):
+            ?>
+            <div class="album-card">
+                <h3><?= htmlspecialchars($album['album_name']); ?></h3>
+                <p><?= htmlspecialchars($album['album_description']); ?></p>
+                
+                <!-- Fetch photos in this album -->
+                <div class="album-photos">
+                    <?php
+                    $stmt = $pdo->prepare("SELECT p.* FROM photos p
+                                           INNER JOIN album_photos ap ON p.id = ap.photo_id
+                                           WHERE ap.album_id = ?");
+                    $stmt->execute([$album['album_id']]);
+                    $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    foreach ($photos as $photo):
+                    ?>
+                    <img src="<?= htmlspecialchars($photo['photo_url']); ?>" alt="Photo in album" class="album-photo">
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <!-- Gallery Display Section -->
+    <section class="gallery">
+        <h2>Photo Gallery</h2>
+        <div class="gallery-grid">
+            <?php
+            // Fetch all photos (assuming there's a `photos` table in your `gallery_db`)
+            $photos = $pdo->query("SELECT * FROM photos")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($photos as $photo):
+            ?>
+            <div class="gallery-item">
+                <img src="<?= htmlspecialchars($photo['photo_url']); ?>" alt="Gallery Image" class="gallery-photo">
+                <div class="image-info">
+                    <p><?= htmlspecialchars($photo['title']); ?></p>
+                    <p>Uploaded on: <?= date('F j, Y', strtotime($photo['upload_date'])); ?></p>
+
+                    <!-- Dropdown to select album and add photo to it -->
+                    <form action="add_to_album.php" method="POST">
+                        <input type="hidden" name="photo_id" value="<?= $photo['id']; ?>">
+                        <select name="album_id" required>
+                            <option value="" disabled selected>Select Album</option>
+                            <?php
+                            // Fetch all albums to show in the dropdown
+                            $albums = $pdo->query("SELECT * FROM albums")->fetchAll(PDO::FETCH_ASSOC);
+                            foreach ($albums as $album):
+                            ?>
+                            <option value="<?= $album['album_id']; ?>"><?= htmlspecialchars($album['album_name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit">Add to Album</button>
+                    </form>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </section>
+
+</body>
+</html>
